@@ -1,6 +1,21 @@
 import cv2 as cv
+import sys
 from operator import itemgetter
 
+def SobelEdges(img, kernelSize):
+    # Apply sobel operator for x and y axis
+    sobelX = cv.Sobel(img, cv.CV_64F, 1, 0, ksize=kernelSize)
+    sobelY = cv.Sobel(img, cv.CV_64F, 0, 1, ksize=kernelSize)
+    absX = cv.convertScaleAbs(sobelX)
+    absY = cv.convertScaleAbs(sobelY)
+
+    # Combine the two images
+    edges = cv.addWeighted(absX, 0.5, absY, 0.5, 0)
+
+    # Convert to grayscale (for easier use)
+    edges = cv.cvtColor(edges, cv.COLOR_BGR2GRAY)
+    return edges
+    
 def FindCarvingLine(img, x):
     # Get dimensions of image
     height, width = img.shape
@@ -67,7 +82,9 @@ def Resize(img, newWidth):
     img = img.copy()
 
     # Edge detection
-    edges = cv.Canny(img, 10, 150)
+    sobelEdges = SobelEdges(img, 3)
+    cannyEdges = cv.Canny(img, 100, 200)
+    edges = cv.addWeighted(sobelEdges, 0.5, cannyEdges, 0.5, 0)
 
     # Generate all carving lines
     imgWidth = edges.shape[1]
@@ -87,3 +104,15 @@ def Resize(img, newWidth):
         img = RemovePoints(carvingLines[i], img)
     
     return img
+
+if len(sys.argv) == 4:
+    input = sys.argv[1]
+    newWidth = int(sys.argv[2])
+    output = sys.argv[3]
+
+    inputImg = cv.imread(input)
+    outputImg = Resize(inputImg, newWidth)
+    cv.imwrite(output, outputImg)
+else:
+    print("USAGE: python3 SeamCarving.py pathToInput newWidth pathToOutput")
+    
